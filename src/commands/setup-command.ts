@@ -11,12 +11,12 @@ import { panelButtons, panelEmbed } from '../ui/ticket-ui.js';
 export const setupCommand = {
   data: new SlashCommandBuilder()
     .setName('ticket-setup')
-    .setDescription('إعداد نظام تذاكر Frozen')
+    .setDescription('Configure the Frozen support system')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addChannelOption((option) => option.setName('panel').setDescription('قناة فتح التذاكر').addChannelTypes(ChannelType.GuildText).setRequired(true))
-    .addChannelOption((option) => option.setName('category').setDescription('تصنيف التذاكر').addChannelTypes(ChannelType.GuildCategory).setRequired(true))
-    .addRoleOption((option) => option.setName('support').setDescription('رتبة فريق الدعم').setRequired(true))
-    .addChannelOption((option) => option.setName('logs').setDescription('قناة سجلات التذاكر').addChannelTypes(ChannelType.GuildText).setRequired(true)),
+    .addChannelOption((option) => option.setName('panel').setDescription('Channel where members open tickets').addChannelTypes(ChannelType.GuildText).setRequired(true))
+    .addChannelOption((option) => option.setName('category').setDescription('Category for ticket channels').addChannelTypes(ChannelType.GuildCategory).setRequired(true))
+    .addRoleOption((option) => option.setName('support').setDescription('Role for the support team').setRequired(true))
+    .addChannelOption((option) => option.setName('logs').setDescription('Private channel for ticket logs').addChannelTypes(ChannelType.GuildText).setRequired(true)),
 
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) return;
@@ -37,6 +37,6 @@ export const setupCommand = {
     });
 
     await panel.send({ embeds: [panelEmbed()], components: [panelButtons()] });
-    await interaction.editReply('✅ تم إعداد نظام التذاكر ونشر لوحة فتح التذكرة بنجاح.');
+    await interaction.editReply('✅ Support is configured and the ticket panel has been posted.');
   },
 };

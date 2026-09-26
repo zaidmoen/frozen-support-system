@@ -11,8 +11,11 @@ import { GuildRepository } from '../database/guild-repository.js';
 import { TicketRepository } from '../database/ticket-repository.js';
 import { isSupport } from '../utils/permissions.js';
 import { ticketControls, ticketEmbed } from '../ui/ticket-ui.js';
+import { IncidentRadar } from './incident-radar.js';
+import { logger } from '../config/logger.js';
 
 export class TicketService {
+  private readonly incidentRadar = new IncidentRadar();
   constructor(
     private readonly guilds = new GuildRepository(),
     private readonly tickets = new TicketRepository(),
@@ -49,6 +52,13 @@ export class TicketService {
         details,
       });
 
+      let incident = null;
+      try {
+        incident = await this.incidentRadar.record(ticket);
+      } catch (error) {
+        logger.error({ err: error, ticketId: ticket.id }, 'Incident Radar could not analyze a new ticket');
+      }
+
       await channel.setName(`ticket-${String(ticket.ticket_number).padStart(4, '0')}`);
       await channel.send({
         content: `<@${interaction.user.id}> <@&${settings.support_role_id}>`,
@@ -57,7 +67,28 @@ export class TicketService {
         allowedMentions: { users: [interaction.user.id], roles: [settings.support_role_id] },
       });
 
-      return { existingChannelId: null, ticket };
+      if (incident) {
+        const incidentMessage = incident.created
+          ? `🚨 **Possible service incident detected**\nThis report matches ${incident.ticketCount - 1} recent tickets from different members. <@&${settings.support_role_id}> is reviewing the pattern. Related tickets: ${incident.relatedChannelIds.map((id) => `<#${id}>`).join(', ')}`
+          : `🔎 **This ticket is linked to a possible incident**\n${incident.ticketCount} reports from different members share a similar subject. Staff are reviewing the pattern. <@&${settings.support_role_id}>`;
+        await channel.send({
+          content: incidentMessage,
+          allowedMentions: { roles: [settings.support_role_id] },
+        });
+        if (incident.created) {
+          for (const channelId of incident.relatedChannelIds) {
+            const relatedChannel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+            if (relatedChannel?.isTextBased()) {
+              await relatedChannel.send({
+                content: `🚨 **Possible service incident detected**\nYour report has been linked with similar reports from other members. Support staff are reviewing the pattern.`,
+                allowedMentions: { parse: [] },
+              }).catch((error) => logger.warn({ err: error, channelId }, 'Could not post incident update to a related ticket'));
+            }
+          }
+        }
+      }
+
+      return { existingChannelId: null, ticket, incident };
     } catch (error) {
       await channel.delete('Rolling back failed ticket creation').catch(() => undefined);
       throw error;

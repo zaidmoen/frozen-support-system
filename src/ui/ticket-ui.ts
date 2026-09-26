@@ -7,47 +7,47 @@ import {
 import type { Ticket } from '../types/ticket.js';
 
 const statusLabel: Record<Ticket['status'], string> = {
-  open: '🟢 بانتظار فريق الدعم',
-  claimed: '🟡 قيد المعالجة',
-  waiting_user: '🔵 بانتظار رد العضو',
-  waiting_staff: '🟣 بانتظار رد الدعم',
-  closed: '⚫ مغلقة',
+  open: '🟢 Waiting for support',
+  claimed: '🟡 In progress',
+  waiting_user: '🔵 Waiting for member',
+  waiting_staff: '🟣 Waiting for support reply',
+  closed: '⚫ Closed',
 };
 
 export function panelEmbed() {
   return new EmbedBuilder()
     .setColor(0x7dd3fc)
-    .setTitle('🎫 التواصل مع الدعم الفني')
+    .setTitle('🎫 Contact Support')
     .setDescription(
-      'يمكنك فتح تذكرة للتواصل مع فريق الدعم الفني الخاص بخادم **فروزين**.\n\n' +
-      'يمكنك من خلال هذه التذكرة الاستفسار عن أي معلومة تخص الخادم، الإبلاغ عن مشكلة، أو طلب المساعدة من فريق الدعم.\n\n' +
-      '**اضغط على الزر أدناه لفتح تذكرتك.**',
+      'Open a private ticket to contact the **Frozen** support team.\n\n' +
+      'Ask a question, report an issue, or request help from our team.\n\n' +
+      '**Select the button below to get started.**',
     )
-    .setFooter({ text: 'Frozen Support • نحن هنا لمساعدتك' });
+    .setFooter({ text: 'Frozen Support • Here to help' });
 }
 
 export function panelButtons() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('ticket:open')
-      .setLabel('فتح تذكرة')
+      .setLabel('Open a ticket')
       .setEmoji('🎫')
       .setStyle(ButtonStyle.Primary),
   );
 }
 
 export function ticketEmbed(ticket: Ticket) {
-  const owner = ticket.claimed_by ? `<@${ticket.claimed_by}>` : 'لم يتم استلام التذكرة بعد';
+  const owner = ticket.claimed_by ? `<@${ticket.claimed_by}>` : 'Unassigned';
 
   return new EmbedBuilder()
     .setColor(ticket.status === 'closed' ? 0x64748b : 0x38bdf8)
-    .setTitle(`🎫 تذكرة #${String(ticket.ticket_number).padStart(4, '0')}`)
+    .setTitle(`🎫 Ticket #${String(ticket.ticket_number).padStart(4, '0')}`)
     .addFields(
-      { name: '👤 صاحب التذكرة', value: `<@${ticket.opener_id}>`, inline: true },
-      { name: '👨‍💻 المسؤول', value: owner, inline: true },
-      { name: '📍 الحالة', value: statusLabel[ticket.status], inline: true },
-      { name: '📌 عنوان الخدمة', value: ticket.service_title },
-      { name: '📝 تفاصيل الطلب', value: ticket.details },
+      { name: '👤 Member', value: `<@${ticket.opener_id}>`, inline: true },
+      { name: '👨‍💻 Assigned to', value: owner, inline: true },
+      { name: '📍 Status', value: statusLabel[ticket.status], inline: true },
+      { name: '📌 Subject', value: ticket.service_title },
+      { name: '📝 Details', value: ticket.details },
     )
     .setTimestamp(ticket.created_at)
     .setFooter({ text: 'Frozen Support' });
@@ -60,25 +60,25 @@ export function ticketControls(ticket: Ticket) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('ticket:claim')
-      .setLabel(claimed ? 'تم الاستلام' : 'استلام التذكرة')
+      .setLabel(claimed ? 'Claimed' : 'Claim ticket')
       .setEmoji('✅')
       .setStyle(ButtonStyle.Success)
       .setDisabled(closed || claimed),
     new ButtonBuilder()
       .setCustomId('ticket:wait-user')
-      .setLabel('انتظار العضو')
+      .setLabel('Wait for member')
       .setEmoji('⏳')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(closed || !claimed),
     new ButtonBuilder()
       .setCustomId('ticket:wait-staff')
-      .setLabel('انتظار الدعم')
+      .setLabel('Wait for support')
       .setEmoji('💬')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(closed || !claimed),
     new ButtonBuilder()
       .setCustomId('ticket:close')
-      .setLabel('إغلاق')
+      .setLabel('Close')
       .setEmoji('🔒')
       .setStyle(ButtonStyle.Danger)
       .setDisabled(closed),
@@ -88,13 +88,13 @@ export function ticketControls(ticket: Ticket) {
 export function closedEmbed(ticket: Ticket) {
   return new EmbedBuilder()
     .setColor(0x64748b)
-    .setTitle('🔒 تم إغلاق التذكرة')
+    .setTitle('🔒 Ticket closed')
     .addFields(
-      { name: '🎫 رقم التذكرة', value: `#${String(ticket.ticket_number).padStart(4, '0')}`, inline: true },
-      { name: '👤 العضو', value: `<@${ticket.opener_id}>`, inline: true },
-      { name: '👨‍💻 المسؤول', value: ticket.claimed_by ? `<@${ticket.claimed_by}>` : 'غير محدد', inline: true },
-      { name: '📌 عنوان الخدمة', value: ticket.service_title },
-      { name: '📝 سبب الإغلاق', value: ticket.close_reason ?? 'لم يتم تحديد سبب' },
+      { name: '🎫 Ticket number', value: `#${String(ticket.ticket_number).padStart(4, '0')}`, inline: true },
+      { name: '👤 Member', value: `<@${ticket.opener_id}>`, inline: true },
+      { name: '👨‍💻 Staff member', value: ticket.claimed_by ? `<@${ticket.claimed_by}>` : 'Unassigned', inline: true },
+      { name: '📌 Subject', value: ticket.service_title },
+      { name: '📝 Resolution', value: ticket.close_reason ?? 'No reason provided' },
     )
     .setTimestamp();
 }
