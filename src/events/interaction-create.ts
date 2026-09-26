@@ -15,7 +15,7 @@ export async function onInteractionCreate(interaction: Interaction) {
   } catch (error) {
     logger.error({ err: error }, 'Interaction failed');
     if (interaction.isRepliable()) {
-      const payload = { content: 'حدث خطأ غير متوقع. تم تسجيله للمراجعة.', ephemeral: true } as const;
+      const payload = { content: 'An unexpected error occurred. The team has been notified.', ephemeral: true } as const;
       if (interaction.deferred || interaction.replied) await interaction.followUp(payload).catch(() => undefined);
       else await interaction.reply(payload).catch(() => undefined);
     }

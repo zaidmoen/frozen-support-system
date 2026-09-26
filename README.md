@@ -1,61 +1,48 @@
-# Frozen Support System ❄️
+# Frozen Support System
 
-A modern Arabic Discord support and ticket system for **Frozen**, built with TypeScript, discord.js, and Supabase PostgreSQL.
+An English-first Discord support system built with TypeScript, discord.js, and PostgreSQL. It combines private tickets, staff workflows, transcripts, feedback, and **Incident Radar**, a lightweight signal detector for bursts of similar reports.
+
+## What makes it different
+
+Most ticket systems treat every report as an isolated conversation. Incident Radar looks for a repeated issue across recent tickets from different members. When at least three members report a sufficiently similar issue within 20 minutes, it links the tickets, posts a notice in each affected ticket, and alerts the support role. Staff can resolve the incident from any linked ticket with `/incident resolve`.
+
+Radar uses explainable keyword overlap and does not call an AI service. It is designed to surface a pattern for staff review; it does not decide that an outage is confirmed. The detector currently supports English text and may miss paraphrases or group unrelated reports that share terms.
 
 ## Features
 
-- Arabic ticket panel with a clean member experience.
-- Ticket creation modal using **عنوان الخدمة** and **تفاصيل الطلب**.
-- Configurable panel channel, ticket category, support role, and logs channel through `/ticket-setup`.
-- One-open-ticket-per-member protection by default.
-- Safe ticket claiming so two staff members cannot claim the same ticket.
-- Ticket states: open, claimed, waiting for member, waiting for support, and closed.
-- Required close reason.
-- HTML transcript generation and database storage.
-- 1–5 star support rating after closing.
-- Ticket audit events and support logs.
-- Atomic ticket numbering with PostgreSQL transactions.
-- Multi-guild database design.
+- English ticket panel and request form.
+- Configurable panel, ticket category, support role, and private logs channel.
+- One open ticket per member by default.
+- Atomic ticket numbering and safe staff claiming.
+- Ticket states for open, claimed, waiting for a member, waiting for support, and closed.
+- Required resolution summary, HTML transcript, audit log, and 1–5 star feedback.
+- Incident Radar links repeated reports and notifies affected members and support staff.
+- `/incident resolve` closes the active incident linked to the current ticket and updates the linked tickets.
+- Multi-server database design with PostgreSQL row-level security enabled.
 
 ## Stack
 
-- Node.js
-- TypeScript
+- Node.js and TypeScript
 - discord.js
-- PostgreSQL
-- Supabase
-- Pino
-- Zod
+- PostgreSQL / Supabase
+- `pg`, Pino, and Zod
 
-## Project Structure
+## Run locally
 
-```text
-src/
-├── commands/          # Slash commands
-├── config/            # Environment and logger configuration
-├── database/          # PostgreSQL repositories and pool
-├── events/            # Discord event handlers
-├── interactions/      # Buttons and modal handlers
-├── services/          # Ticket and transcript business logic
-├── types/             # Shared TypeScript types
-├── ui/                # Embeds and Discord components
-└── utils/             # Permission helpers
+### Requirements
 
-supabase/
-└── migrations/        # Database schema
-```
+- Node.js 20 or newer
+- A Discord application with a bot
+- A Supabase PostgreSQL database
 
-## Setup
-
-### 1. Install dependencies
+### Install and configure
 
 ```bash
 npm install
+cp .env.example .env
 ```
 
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your own values:
+Set these values in `.env`:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token
@@ -65,50 +52,40 @@ DATABASE_URL=your_supabase_postgres_connection_string
 NODE_ENV=development
 ```
 
-Never commit `.env` or any real secrets.
+Never commit `.env` or share a bot token. If your network is IPv4-only, use the Supabase Session Pooler connection string.
 
-> **Supabase note:** the direct database endpoint is IPv6 by default. If your local network is IPv4-only, use the **Session Pooler** connection string from Supabase `Connect` instead of the direct `db.<project-ref>.supabase.co` endpoint.
+### Set up the database
 
-### 3. Create the database schema
+Run both SQL files, in order, in the Supabase SQL Editor:
 
-Run the SQL migration in:
+1. `supabase/migrations/0001_initial_ticket_system.sql`
+2. `supabase/migrations/0002_incident_radar.sql`
 
-```text
-supabase/migrations/0001_initial_ticket_system.sql
-```
+Incident Radar stores filtered English keywords for up to 30 days to compare reports. It does not store ticket text in its signal table. Ticket details and transcripts continue to follow the existing ticket storage and retention practices.
 
-The schema enables RLS on the public tables. The bot itself connects from the trusted backend through PostgreSQL.
-
-### 4. Deploy slash commands
+### Start the bot
 
 ```bash
+npm run check
 npm run deploy:commands
-```
-
-### 5. Start development mode
-
-```bash
 npm run dev
 ```
 
-### 6. Configure the Discord server
+In the server, run `/ticket-setup` and select the panel channel, ticket category, support role, and private log channel. The bot does not need the Administrator permission. Grant the required channel and message permissions listed below.
 
-Run:
+## Incident Radar behavior
 
-```text
-/ticket-setup
-```
+1. When a ticket opens, the detector extracts common English keywords from its subject and details. URLs, numbers, and common filler words are excluded.
+2. It compares those terms with open tickets created in the previous 20 minutes.
+3. Similarity requires at least two shared terms and a Jaccard overlap of at least 0.30. Only one earlier ticket per member is counted.
+4. Three reports from different members create an incident. The bot links the tickets and posts a notice in their private channels.
+5. Support staff can run `/incident resolve` from any linked ticket. The bot closes the incident and posts a resolution notice in every linked channel.
 
-Choose:
+The detector is deliberately conservative and transparent, but it can still produce false matches. Staff should review the linked tickets before treating a signal as a confirmed service issue.
 
-- `panel` — channel that contains the ticket panel.
-- `category` — category where new ticket channels are created.
-- `support` — support staff role.
-- `logs` — private ticket log channel.
+## Discord permissions
 
-## Discord Bot Permissions
-
-Recommended bot permissions:
+The bot needs:
 
 - View Channels
 - Manage Channels
@@ -117,46 +94,33 @@ Recommended bot permissions:
 - Attach Files
 - Read Message History
 
-OAuth2 scopes:
+Invite scopes: `bot` and `applications.commands`. Message Content intent is enabled for transcript generation; enable it in the Discord Developer Portal as well.
 
-- `bot`
-- `applications.commands`
+## Project layout
 
-The project does not require the `Administrator` permission.
+```text
+src/
+├── commands/       # Slash commands
+├── config/         # Environment and logging
+├── database/       # PostgreSQL repositories
+├── events/         # Discord event routing
+├── interactions/   # Ticket buttons and forms
+├── services/       # Ticket, transcript, and incident logic
+├── types/          # Shared TypeScript types
+├── ui/             # Embeds and buttons
+└── utils/          # Permission helpers
+
+supabase/migrations/ # Database schema changes
+```
 
 ## Scripts
 
 ```bash
-npm run dev             # Run with watch mode
-npm run check           # TypeScript type check
-npm run build           # Build to dist/
-npm run start           # Run the compiled build
-npm run deploy:commands # Register guild slash commands
-```
-
-## Security
-
-- `.env` is ignored by Git.
-- Never commit Discord tokens or database passwords.
-- Rotate a secret immediately if it is exposed.
-- Keep support logs and transcript access restricted to trusted staff.
-
-## Current Ticket Flow
-
-```text
-Open Ticket
-    ↓
-Service Title + Request Details
-    ↓
-Open / Waiting for Support
-    ↓
-Claimed by Staff
-    ↓
-Waiting for Member / Waiting for Support
-    ↓
-Close with Reason
-    ↓
-Transcript + Logs + Rating
+npm run dev             # Run with file watching
+npm run check           # Type-check without emitting files
+npm run build           # Compile to dist/
+npm run start           # Run the compiled bot
+npm run deploy:commands # Register slash commands
 ```
 
 ---
